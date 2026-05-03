@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose build *)",
+      "Bash(docker build *)",
+      "Bash(docker run *)",
+      "Bash(docker exec codemonkey-app *)",
+      "Bash(docker rm *)"
+    ]
+  }
+}

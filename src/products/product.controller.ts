@@ -25,6 +25,18 @@ export class ProductController {
     return this.productService.getProductById(id);
   }
 
+  @Get('getProduct')
+  async getProduct() {
+    return this.productService.getProduct();
+  }
+  
+  
+  @Get('getAllProduct')
+  async getAllProduct() {
+    return this.productService.getAllProduct();
+  }
+  
+
   @Put('updateProduct/:id')
   async updateProduct(
     @Param('id') id: string,

@@ -21,13 +21,17 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm install --only=production
+RUN npm install
 
 # Copy compiled code from build stage
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
+
+# Generate Prisma client
+RUN npx prisma generate
 
 # Expose NestJS default port
 EXPOSE 3000
 
 # Run the app
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

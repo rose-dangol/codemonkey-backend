@@ -28,8 +28,10 @@ model Product {
   productCategory ProductCategory? @relation(fields: [categoryId], references: [id])
   brand           Brand?           @relation(fields: [brandId], references: [id])
   brandId         String?
+  isHidden        Boolean          @default(false)
 
   @@index([productName])
+  @@index([isHidden]) 
 }
 
 model ProductCategory {

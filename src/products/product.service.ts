@@ -4,7 +4,7 @@ import { AddProductDto } from './dto/addProduct.dto';
 
 @Injectable()
 export class ProductService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async validateProduct(productName: string) {
     const product = await this.prisma.product.findUnique({
@@ -14,6 +14,27 @@ export class ProductService {
       throw new ConflictException('This product already exists ');
     }
     return product;
+  }
+
+  async getProduct() {
+    return this.prisma.product.findMany({
+      where: {
+        isHidden: false,
+      },
+      include: {
+        productCategory: true,
+        brand: true,
+      },
+    });
+  }
+
+  async getAllProduct() {
+    return this.prisma.product.findMany({
+      include: {
+        productCategory: true,
+        brand: true,
+      },
+    });
   }
 
   async addProduct(productDetail: AddProductDto) {

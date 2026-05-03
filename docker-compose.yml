@@ -4,7 +4,7 @@ services:
     image: postgres:15-alpine
     container_name: postgres-nest
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Rose9840503594
@@ -16,7 +16,7 @@ services:
     build: .
     container_name: codemonkey-app
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       DATABASE_URL: postgresql://postgres:Rose9840503594@postgres-nest:5432/codemonkey
     depends_on:
