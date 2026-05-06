@@ -48,6 +48,11 @@ export class ProductService {
             id: productDetail.productCategoryId,
           },
         },
+        brand:{
+          connect:{
+            id: productDetail.productBrandId,
+          },
+        }
       },
     });
   }
@@ -59,7 +64,7 @@ export class ProductService {
   }
 
   async updateProduct(id: string, productDetail: AddProductDto) {
-    const { productCategoryId, ...rest } = productDetail;
+    const { productCategoryId, productBrandId, ...rest } = productDetail;
 
     return this.prisma.product.update({
       where: { id },
@@ -68,6 +73,11 @@ export class ProductService {
         ...(productCategoryId && {
           productCategory: {
             connect: { id: productCategoryId },
+          },
+        }),
+        ...(productBrandId && {
+          brand: {
+            connect: { id: productBrandId },
           },
         }),
       },

@@ -30,6 +30,16 @@ export class BrandService {
       },
     });
   }
+
+  async getBrandById(brandId: string) {
+    return this.prisma.brand.findUnique({
+      where: { id: brandId },
+      include: {
+        products: true,
+      },
+    });
+  }
+
   async updateBrand(brandDetail: UpdateBrandDto, brandId: string) {
     const updatedBrand = await this.prisma.brand.update({
       where: { id: brandId },
