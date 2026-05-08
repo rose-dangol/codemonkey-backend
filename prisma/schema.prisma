@@ -20,40 +20,131 @@ model User {
 }
 
 model Product {
-  id              String           @id @default(uuid())
-  productName     String           @unique
+  id              String            @id @default(uuid())
+
+  productName     String            @unique
   quantity        Int
+
   productImage    String?
+
   categoryId      String?
-  productCategory ProductCategory? @relation(fields: [categoryId], references: [id])
-  brand           Brand?           @relation(fields: [brandId], references: [id])
+  productCategory ProductCategory?  @relation(fields: [categoryId], references: [id])
+
   brandId         String?
-  isHidden        Boolean          @default(false)
+  brand           Brand?            @relation(fields: [brandId], references: [id])
+
+  serviceTypeId   String?
+  serviceType     ServiceType?      @relation(fields: [serviceTypeId], references: [id])
+
+  variants        ProductVariant[]
+
+  isHidden        Boolean           @default(false)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([productName])
-  @@index([isHidden]) 
+  @@index([isHidden])
+  @@index([serviceTypeId])
 }
 
 model ProductCategory {
   id                 String            @id @default(uuid())
+
   categoryName       String            @unique
   categoryParentId   String?
+
   categoryImage      String
   categoryDesc       String
+
   productSubCategory ProductCategory?  @relation("CategoryHierarchy", fields: [categoryParentId], references: [id])
+
   subCategories      ProductCategory[] @relation("CategoryHierarchy")
+
   products           Product[]
 
   @@index([categoryName])
 }
 
 model Brand {
-  id                String            @id @default(uuid())
-  brandName         String            @unique
-  brandImage        String?
-  brandDesc         String
-  products          Product[]
+  id           String    @id @default(uuid())
 
+  brandName    String    @unique
+  brandImage   String?
+  brandDesc    String
+
+  products     Product[]
 
   @@index([brandName])
+}
+
+model ServiceType {
+  id            String    @id @default(uuid())
+
+  serviceName   String    @unique
+  attributes    AttributeDefinition[]
+
+  products      Product[]
+
+  createdAt     DateTime  @default(now())
+
+  @@index([serviceName])
+}
+
+model ProductVariant {
+  id         String @id @default(uuid())
+
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  sku        String?
+  price      Decimal @db.Decimal(10,2)
+  stock      Int
+
+  attributes VariantAttribute[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model VariantAttribute {
+  id            String @id @default(uuid())
+
+  variantId     String
+  variant       ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  attributeId   String
+  attribute     AttributeDefinition @relation(fields: [attributeId], references: [id])
+
+  value         String
+
+  createdAt     DateTime @default(now())
+
+  @@index([variantId])
+  @@index([attributeId])
+}
+
+model AttributeDefinition {
+  id            String   @id @default(uuid())
+
+  serviceTypeId String
+  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  key           String   // stable identifier: "grade"
+  name          String   // display name: "Grade"
+
+  type          String   // text | enum | number
+  variantAttributes VariantAttribute[]
+
+  allowedValues String[] // ["A", "B", "Premium A"]
+
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+
+  @@unique([serviceTypeId, key])
+  @@index([serviceTypeId])
 }

@@ -1,10 +1,14 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddProductDto } from './dto/addProduct.dto';
 
 @Injectable()
 export class ProductService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async validateProduct(productName: string) {
     const product = await this.prisma.product.findUnique({
@@ -27,14 +31,37 @@ export class ProductService {
       },
     });
   }
-
   async getAllProduct() {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       include: {
         productCategory: true,
         brand: true,
+        variants: {
+          include: {
+            attributes: {
+              include: {
+                attribute: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    return products.map((product) => ({
+      ...product,
+
+      variants: product.variants.map((variant) => ({
+        ...variant,
+
+        attributes: Object.fromEntries(
+          variant.attributes.map((attr) => [
+            `${attr.attribute.serviceTypeId}.${attr.attribute.key}`,
+            attr.value,
+          ]),
+        ),
+      })),
+    }));
   }
 
   async addProduct(productDetail: AddProductDto) {
@@ -48,11 +75,16 @@ export class ProductService {
             id: productDetail.productCategoryId,
           },
         },
-        brand:{
-          connect:{
+        brand: {
+          connect: {
             id: productDetail.productBrandId,
           },
-        }
+        },
+        serviceType: {
+          connect: {
+            id: productDetail.serviceId,
+          },
+        },
       },
     });
   }
