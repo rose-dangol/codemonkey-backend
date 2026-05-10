@@ -26,4 +26,10 @@ export class BrandController {
     return this.brandSerivce.getBrand()
   }
 
+
+  @Get('getBrand/:id')
+  async GetBrandById(@Param('id') brandId: string) {
+    return this.brandSerivce.getBrandById(brandId)
+  }
+
 }

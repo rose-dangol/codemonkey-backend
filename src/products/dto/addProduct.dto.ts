@@ -19,11 +19,19 @@ export class AddProductDto {
   @IsNumber()
   quantity: number = 1;
 
-  @IsOptional()
-  @IsString()
-  parentId?: string | undefined;
+  // @IsOptional()
+  // @IsString()
+  // parentId?: string | undefined;
 
   @IsOptional()
   @IsString()
   productCategoryId?: string | undefined;
+
+  @IsOptional()
+  @IsString()
+  productBrandId?: string | undefined;
+
+  @IsOptional()
+  @IsString()
+  serviceId?: string | undefined;
 }

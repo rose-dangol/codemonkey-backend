@@ -1,10 +1,14 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddProductDto } from './dto/addProduct.dto';
 
 @Injectable()
 export class ProductService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async validateProduct(productName: string) {
     const product = await this.prisma.product.findUnique({
@@ -27,14 +31,42 @@ export class ProductService {
       },
     });
   }
-
   async getAllProduct() {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       include: {
         productCategory: true,
         brand: true,
+        variants: {
+          include: {
+            attributes: {
+              include: {
+                attribute: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    return products.map((product) => ({
+      ...product,
+
+      variants: product.variants.map((variant) => ({
+        ...variant,
+
+        attributes: variant.attributes.map((attr) => ({
+          id: attr.id,
+
+          attributeId: attr.attributeId,
+
+          key: attr.attribute.key,
+
+          value: attr.value,
+
+          serviceTypeId: attr.attribute.serviceTypeId,
+        })),
+      })),
+    }));
   }
 
   async addProduct(productDetail: AddProductDto) {
@@ -48,6 +80,16 @@ export class ProductService {
             id: productDetail.productCategoryId,
           },
         },
+        brand: {
+          connect: {
+            id: productDetail.productBrandId,
+          },
+        },
+        serviceType: {
+          connect: {
+            id: productDetail.serviceId,
+          },
+        },
       },
     });
   }
@@ -59,7 +101,7 @@ export class ProductService {
   }
 
   async updateProduct(id: string, productDetail: AddProductDto) {
-    const { productCategoryId, ...rest } = productDetail;
+    const { productCategoryId, productBrandId, ...rest } = productDetail;
 
     return this.prisma.product.update({
       where: { id },
@@ -68,6 +110,11 @@ export class ProductService {
         ...(productCategoryId && {
           productCategory: {
             connect: { id: productCategoryId },
+          },
+        }),
+        ...(productBrandId && {
+          brand: {
+            connect: { id: productBrandId },
           },
         }),
       },
