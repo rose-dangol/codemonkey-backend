@@ -54,12 +54,17 @@ export class ProductService {
       variants: product.variants.map((variant) => ({
         ...variant,
 
-        attributes: Object.fromEntries(
-          variant.attributes.map((attr) => [
-            `${attr.attribute.serviceTypeId}.${attr.attribute.key}`,
-            attr.value,
-          ]),
-        ),
+        attributes: variant.attributes.map((attr) => ({
+          id: attr.id,
+
+          attributeId: attr.attributeId,
+
+          key: attr.attribute.key,
+
+          value: attr.value,
+
+          serviceTypeId: attr.attribute.serviceTypeId,
+        })),
       })),
     }));
   }

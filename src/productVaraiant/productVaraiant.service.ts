@@ -55,11 +55,60 @@ export class ProductVaraiantService {
     });
   }
 
-  async getAllProductVariant() {
-    return this.prisma.productVariant.findMany({
+  async updateProductVariant(
+    id: string,
+    productVariantPayload: CreateProductVariantDto,
+  ) {
+    return this.prisma.productVariant.update({
+      where: { id },
+      data: {
+        productId: productVariantPayload.productId,
+        sku: productVariantPayload.sku,
+        price: productVariantPayload.price,
+        stock: productVariantPayload.stock,
+
+        attributes: {
+          deleteMany: {},
+          create: productVariantPayload.attributes.map((attr) => ({
+            attributeId: attr.attributeId,
+            value: attr.value,
+          })),
+        },
+      },
+
       include: {
         attributes: true,
       },
     });
+  }
+
+  async getAllProductVariant() {
+    const variants = await this.prisma.productVariant.findMany({
+      include: {
+        attributes: {
+          include: {
+            attribute: true,
+          },
+        },
+      },
+    });
+
+    return variants.map((variant) => ({
+      ...variant,
+
+      attributes: variant.attributes.map((attr) => ({
+        id: attr.id,
+
+        attributeId: attr.attributeId,
+
+        value: attr.value,
+
+        key: attr.attribute.key,
+
+        name: attr.attribute.name,
+
+        type: attr.attribute.type,
+      })),
+    }));
   }
 }
