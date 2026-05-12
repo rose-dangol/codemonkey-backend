@@ -111,4 +111,14 @@ export class ProductVaraiantService {
       })),
     }));
   }
+
+  async deleteProductVariant(id: string[]) {
+    return this.prisma.productVariant.deleteMany({
+      where: {
+        id: {
+          in: id,
+        },
+      },
+    });
+  }
 }
