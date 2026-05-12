@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
 import { ProductVaraiantService } from './productVaraiant.service';
 import { CreateProductVariantDto } from './dto/productVaraiant.dto';
 
@@ -24,5 +24,10 @@ export class ProductVaraiantController {
     @Body() body: CreateProductVariantDto,
   ) {
     return this.productVaraiantService.updateProductVariant(id, body);
+  }
+
+  @Delete('deleteProductVariant')
+  async deleteProductVariant(@Body() body: { ids: string[] }) {
+    return this.productVaraiantService.deleteProductVariant(body.ids);
   }
 }
