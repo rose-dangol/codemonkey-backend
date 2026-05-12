@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsString } from 'class-validator';
+import { IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -9,5 +9,6 @@ export class RegisterDto {
   username: string;
 
   @IsString()
+  @MinLength(2)
   passwordHash: string;
 }

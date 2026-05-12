@@ -18,7 +18,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "email": "email dev"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -32,12 +33,17 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
     "cloudinary": "^2.9.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.3.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "pg": "^8.17.2",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-email": "^6.1.1",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.12.3",
     "rxjs": "^7.8.1",
     "streamifier": "^0.1.1"
   },
@@ -48,7 +54,9 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
     "@prisma/client": "^6.19.2",
+    "@react-email/ui": "6.1.1",
     "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/multer": "^2.0.0",
