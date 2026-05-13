@@ -143,7 +143,7 @@ export class AuthService {
     });
   }
 
-  // ─── Decode access token (for logout guard) ───────────────────────────────────
+  // verify access token
 
   verifyAccessToken(token: string): { userId: string; username: string } {
     try {
