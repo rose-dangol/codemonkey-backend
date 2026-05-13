@@ -16,7 +16,8 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  //Register
+  async registerWithTokens(dto: RegisterDto) {
     const { username, passwordHash } = dto;
 
     const existingUser = await this.prisma.user.findUnique({
@@ -24,7 +25,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('username already exists');
+      throw new ConflictException('Username already exists');
     }
 
     const hashedPassword = await bcrypt.hash(passwordHash, 12);
@@ -37,38 +38,84 @@ export class AuthService {
     });
 
     const tokens = await this.generateTokens(user.id, user.username);
-
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
+    // Controller will pluck refreshToken for the httpOnly cookie
     return {
-      ...tokens, // spreads accessToken and refreshToken
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       id: user.id,
     };
   }
 
+  //Validate
   async validateUser(username: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { username } });
 
-    if (!user)
-      throw new UnauthorizedException(
-        'Username and password do not match invoke!user',
-      );
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!passwordMatch)
-      throw new UnauthorizedException(
-        'Username and password do not match invoke!passwordMatch',
-      );
+    if (!passwordMatch) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     return user;
   }
 
+  //Login
+  // returns { accessToken, refreshToken }
+  // controller sets refreshToken as an httpOnly cookie returning only accessToken to client
+
   async login(user: User) {
     const tokens = await this.generateTokens(user.id, user.username);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+    return tokens;
+  }
 
+  // Refresh
+  // Validates the refreshToken (read from the httpOnly cookie by the controller)
+  // returns a new { accessToken, refreshToken }
+
+  async refresh(refreshToken: string) {
+    // Decode without verification first to get userId
+    let payload: { userId: string; username: string };
+    try {
+      payload = this.jwt.verify(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
+
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException('Access denied');
+    }
+
+    const tokenMatches = await bcrypt.compare(refreshToken, user.refreshToken);
+    if (!tokenMatches) {
+      throw new UnauthorizedException('Access denied');
+    }
+
+    // Rotate: generate new pair
+    const tokens = await this.generateTokens(user.id, user.username);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     return tokens;
+  }
+
+  // Logout
+  async logout(userId: string) {
+    // Invalidate stored refresh token hash
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
   }
 
   private async generateTokens(userId: string, username: string) {
@@ -90,28 +137,21 @@ export class AuthService {
 
   private async updateRefreshToken(userId: string, refreshToken: string) {
     const hashed = await bcrypt.hash(refreshToken, 10);
-
     await this.prisma.user.update({
       where: { id: userId },
       data: { refreshToken: hashed },
     });
   }
 
-  async refresh(username: string, refreshToken: string) {
-    const user = await this.prisma.user.findUnique({ where: { username } });
-    if (!user || !user.refreshToken) {
-      throw new UnauthorizedException('Access Denied');
+  // verify access token
+
+  verifyAccessToken(token: string): { userId: string; username: string } {
+    try {
+      return this.jwt.verify(token, {
+        secret: process.env.JWT_ACCESS_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid access token');
     }
-
-    const token = await bcrypt.compare(refreshToken, user.refreshToken);
-    if (!token) {
-      throw new UnauthorizedException('Access Denied');
-    }
-
-    const tokens = await this.generateTokens(user.id, user.username);
-
-    await this.updateRefreshToken(user.id, tokens.refreshToken);
-
-    return tokens;
   }
 }

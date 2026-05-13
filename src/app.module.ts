@@ -8,6 +8,7 @@ import { CategoryModule } from './category/category.module';
 import { BrandModule } from './brand/brand.module';
 import { ProductVaraiantModule } from './productVaraiant/productVaraiant.module';
 import { AttributeDefinitionModule } from './attributeDefinitions/attributeDefinition.module';
+import { EmailsModule } from './emails/emails.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AttributeDefinitionModule } from './attributeDefinitions/attributeDefin
     BrandModule,
     ProductVaraiantModule,
     AttributeDefinitionModule,
+    EmailsModule,
   ],
 })
 export class AppModule {}
