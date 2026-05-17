@@ -40,7 +40,7 @@ export class ProductVaraiantService {
         sku: productVariantPayload.sku,
         price: productVariantPayload.price,
         stock: productVariantPayload.stock,
-
+        cogsData: productVariantPayload.cogsData,
         attributes: {
           create: productVariantPayload.attributes.map((attr) => ({
             attributeId: attr.attributeId,
