@@ -62,8 +62,6 @@ export class ProductService {
           key: attr.attribute.key,
 
           value: attr.value,
-
-          serviceTypeId: attr.attribute.serviceTypeId,
         })),
       })),
     }));
@@ -85,11 +83,7 @@ export class ProductService {
             id: productDetail.productBrandId,
           },
         },
-        serviceType: {
-          connect: {
-            id: productDetail.serviceId,
-          },
-        },
+
       },
     });
   }

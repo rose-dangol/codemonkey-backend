@@ -9,6 +9,7 @@ import { BrandModule } from './brand/brand.module';
 import { ProductVaraiantModule } from './productVaraiant/productVaraiant.module';
 import { AttributeDefinitionModule } from './attributeDefinitions/attributeDefinition.module';
 import { EmailsModule } from './emails/emails.module';
+import { CogsDefinitionModule } from './cogsDefinitions/cogsDefinition.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EmailsModule } from './emails/emails.module';
     ProductVaraiantModule,
     AttributeDefinitionModule,
     EmailsModule,
+    CogsDefinitionModule,
   ],
 })
 export class AppModule {}

@@ -33,8 +33,8 @@ model Product {
   brandId         String?
   brand           Brand?            @relation(fields: [brandId], references: [id])
 
-  serviceTypeId   String?
-  serviceType     ServiceType?      @relation(fields: [serviceTypeId], references: [id])
+  // serviceTypeId   String?
+  // serviceType     ServiceType?      @relation(fields: [serviceTypeId], references: [id])
 
   variants        ProductVariant[]
 
@@ -45,7 +45,7 @@ model Product {
 
   @@index([productName])
   @@index([isHidden])
-  @@index([serviceTypeId])
+  // @@index([serviceTypeId])
 }
 
 model ProductCategory {
@@ -78,18 +78,18 @@ model Brand {
   @@index([brandName])
 }
 
-model ServiceType {
-  id            String    @id @default(uuid())
-
-  serviceName   String    @unique
-  attributes    AttributeDefinition[]
-
-  products      Product[]
-
-  createdAt     DateTime  @default(now())
-
-  @@index([serviceName])
-}
+// model ServiceType {
+//   id            String    @id @default(uuid())
+//
+//   serviceName   String    @unique
+//   attributes    AttributeDefinition[]
+//
+//   products      Product[]
+//
+//   createdAt     DateTime  @default(now())
+//
+//   @@index([serviceName])
+// }
 
 model ProductVariant {
   id         String @id @default(uuid())
@@ -100,6 +100,7 @@ model ProductVariant {
   sku        String?
   price      Decimal @db.Decimal(10,2)
   stock      Int
+  cogsData   Json?
 
   attributes VariantAttribute[]
 
@@ -130,8 +131,8 @@ model VariantAttribute {
 model AttributeDefinition {
   id            String   @id @default(uuid())
 
-  serviceTypeId String
-  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
+  // serviceTypeId String
+  // serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
 
   key           String   // stable identifier: "grade"
   name          String   // display name: "Grade"
@@ -145,6 +146,17 @@ model AttributeDefinition {
 
   createdAt     DateTime @default(now())
 
-  @@unique([serviceTypeId, key])
-  @@index([serviceTypeId])
+  // @@unique([serviceTypeId, key])
+  // @@index([serviceTypeId])
+}
+
+model CogsField {
+  id          String   @id @default(uuid())
+
+  name        String
+  key         String   @unique
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
 }
