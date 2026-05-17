@@ -1,15 +1,18 @@
-import { Transform } from "class-transformer";
-import { IsArray, IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { Transform } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class AttributeDefinitionDto {
   @IsString()
   @IsNotEmpty()
-  serviceTypeId: string;
-
-  @IsString()
-  @IsNotEmpty()
   @Transform(({ value }) =>
-    typeof value === "string" ? value.trim().toLowerCase() : value
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
   key: string;
 
@@ -19,7 +22,7 @@ export class AttributeDefinitionDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsIn(["text", "enum", "number"])
+  @IsIn(['text', 'enum', 'number'])
   type: string;
 
   @IsOptional()
@@ -31,4 +34,3 @@ export class AttributeDefinitionDto {
   @IsBoolean()
   isActive?: boolean;
 }
-    

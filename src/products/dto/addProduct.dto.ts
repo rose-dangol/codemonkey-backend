@@ -31,7 +31,4 @@ export class AddProductDto {
   @IsString()
   productBrandId?: string | undefined;
 
-  @IsOptional()
-  @IsString()
-  serviceId?: string | undefined;
 }
