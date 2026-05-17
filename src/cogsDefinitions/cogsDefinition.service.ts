@@ -37,11 +37,11 @@ export class CogsDefinitionService {
     });
   }
 
-  async deleteCogsField(id: string) {
-    const cogs = await this.prisma.cogsField.findUnique({ where: { id } });
-    if (!cogs) {
-      throw new NotFoundException('No Cogs Field Found');
-    }
-    return this.prisma.cogsField.delete({ where: { id } });
+  async deleteCogsField(ids: string[]) {
+    return this.prisma.cogsField.deleteMany({
+      where: {
+        id: { in: ids },
+      },
+    });
   }
 }

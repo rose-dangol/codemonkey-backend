@@ -37,8 +37,8 @@ export class CogsDefinitionController {
     return this.cogsDefinitionService.updateCogsField(id, payload);
   }
 
-  @Delete('/deleteCogsField/:id')
-  async deleteCogsField(@Param('id') id: string) {
-    return this.cogsDefinitionService.deleteCogsField(id);
+  @Delete('/deleteCogsField')
+  async deleteCogsField(@Body() body: { ids: string[] }) {
+    return this.cogsDefinitionService.deleteCogsField(body.ids);
   }
 }

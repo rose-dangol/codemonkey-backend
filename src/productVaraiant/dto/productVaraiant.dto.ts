@@ -3,13 +3,14 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
   Min,
   ValidateNested,
-} from "class-validator";
-import { Type } from "class-transformer";
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 class VariantAttributeItemDto {
   @IsUUID()
@@ -30,7 +31,7 @@ export class CreateProductVariantDto {
 
   @IsNumber(
     { maxDecimalPlaces: 2 },
-    { message: "Price can have at most 2 decimal places" }
+    { message: 'Price can have at most 2 decimal places' },
   )
   @Min(0)
   price: number;
@@ -38,6 +39,11 @@ export class CreateProductVariantDto {
   @IsInt()
   @Min(0)
   stock: number;
+
+  @IsOptional()
+  @IsObject()
+  @Type(() => Object)
+  cogsData?: Record<string, number>;
 
   @IsArray()
   @ValidateNested({ each: true })
