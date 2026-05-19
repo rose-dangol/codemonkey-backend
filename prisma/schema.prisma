@@ -103,6 +103,7 @@ model ProductVariant {
   cogsData   Json?
 
   attributes VariantAttribute[]
+  cartItems  CartItem[] @relation("CartItemVariant")
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -159,4 +160,411 @@ model CogsField {
   isActive    Boolean  @default(true)
 
   createdAt   DateTime @default(now())
+}
+
+
+// ============================================================
+// TENANT / PLATFORM LAYER (lives in a shared "platform" DB)
+// ============================================================
+
+//model Tenant {
+//  id           String   @id @default(uuid())
+//  name         String   @unique          // "Nike", "Adidas"
+//  slug         String   @unique          // "nike", "adidas"
+//  databaseUrl  String                    // connection string to tenant's own DB
+//  isActive     Boolean  @default(true)
+//  plan         String   @default("standard") // "standard" | "enterprise"
+//  createdAt    DateTime @default(now())
+//  updatedAt    DateTime @updatedAt
+
+//  @@index([slug])
+//}
+
+
+// ============================================================
+// INSIDE EACH TENANT DB (Nike DB, Adidas DB, etc.)
+// All models below live per-tenant — no cross-tenant data
+// ============================================================
+
+// ── Customer ─────────────────────────────────────────────────
+
+model Customer {
+  id            String    @id @default(uuid())
+
+  email         String    @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  phone         String?
+  avatarUrl     String?
+
+  isActive      Boolean   @default(true)
+  isGuest       Boolean   @default(false)
+
+  addresses     CustomerAddress[]
+  orders        Order[]
+  cart          Cart?
+  refreshTokens CustomerRefreshToken[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+}
+
+model CustomerRefreshToken {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([customerId])
+  @@index([token])
+}
+
+model CustomerAddress {
+  id           String    @id @default(uuid())
+
+  customerId   String
+  customer     Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  label        String?   // "Home", "Office"
+  recipientName String
+  phone        String?
+  line1        String
+  line2        String?
+  city         String
+  state        String?
+  postalCode   String
+  country      String    @default("ID")
+  isDefault    Boolean   @default(false)
+
+  orders       Order[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([customerId])
+}
+
+// ── Cart ─────────────────────────────────────────────────────
+
+model Cart {
+  id         String     @id @default(uuid())
+
+  customerId String?    @unique
+  customer   Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  sessionId  String?    @unique          // for guest carts
+  expiresAt  DateTime?
+
+  items      CartItem[]
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([sessionId])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  variantId String                        // FK → ProductVariant.id (same tenant DB)
+ variant   ProductVariant @relation("CartItemVariant", fields: [variantId], references: [id])
+
+  quantity  Int
+
+  // snapshot price at time of add so cart stays consistent
+  priceSnapshot Decimal @db.Decimal(10,2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@index([variantId])
+}
+
+// ── Promotions / Vouchers ─────────────────────────────────────
+
+model Promotion {
+  id               String    @id @default(uuid())
+
+  code             String    @unique       // "NIKE10", "SUMMER20"
+  description      String?
+
+  type             String                  // "percentage" | "fixed" | "free_shipping"
+  value            Decimal   @db.Decimal(10,2)   // 10.00 = 10% or Rp10,000
+
+  minOrderAmount   Decimal?  @db.Decimal(10,2)
+  maxDiscount      Decimal?  @db.Decimal(10,2)   // cap for percentage discounts
+
+  usageLimit       Int?                    // null = unlimited
+  usageCount       Int       @default(0)
+  perCustomerLimit Int       @default(1)
+
+  startsAt         DateTime
+  expiresAt        DateTime?
+
+  isActive         Boolean   @default(true)
+
+  orderPromotions  OrderPromotion[]
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ── Shipping ──────────────────────────────────────────────────
+
+model ShippingMethod {
+  id           String   @id @default(uuid())
+
+  name         String                      // "JNE Regular", "SiCepat BEST"
+  carrier      String                      // "JNE" | "SiCepat" | "internal"
+  serviceCode  String                      // carrier service code
+  description  String?
+
+  baseRate     Decimal  @db.Decimal(10,2)
+  isActive     Boolean  @default(true)
+
+  orders       Order[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([carrier, serviceCode])
+}
+
+// ── Order ─────────────────────────────────────────────────────
+
+model Order {
+  id               String    @id @default(uuid())
+
+  orderNumber      String    @unique       // human-readable: "ORD-20250517-0001"
+
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  // snapshot of shipping address at time of order
+  shippingAddressId String?
+  shippingAddress   CustomerAddress? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+
+  shippingSnapshot  Json?             // full address snapshot in case address is deleted
+
+  shippingMethodId  String?
+  shippingMethod    ShippingMethod? @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+
+  status            OrderStatus     @default(PENDING)
+  paymentStatus     PaymentStatus   @default(UNPAID)
+
+  // financial columns — all stored in smallest-unit Decimal
+  subtotal          Decimal   @db.Decimal(14,2)
+  shippingFee       Decimal   @db.Decimal(10,2)  @default(0)
+  discountTotal     Decimal   @db.Decimal(10,2)  @default(0)
+  taxTotal          Decimal   @db.Decimal(10,2)  @default(0)
+  grandTotal        Decimal   @db.Decimal(14,2)
+
+  notes             String?
+  cancelReason      String?
+
+  items             OrderItem[]
+  promotions        OrderPromotion[]
+  payments          Payment[]
+  statusHistory     OrderStatusHistory[]
+  shipment          Shipment?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([orderNumber])
+  @@index([createdAt])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  AWAITING_VERIFICATION
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  variantId   String                        // reference to ProductVariant (same DB)
+
+  // full product + variant snapshot at time of purchase
+  snapshot    Json
+  // {
+  //   productName, sku, attributes: [{key, name, value}],
+  //   productImage, brandName, categoryName
+  // }
+
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10,2)
+  discount    Decimal  @db.Decimal(10,2)  @default(0)
+  subtotal    Decimal  @db.Decimal(10,2)
+
+  cogsSnapshot Json?                        // copy of variant.cogsData for margin calc
+
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([variantId])
+}
+
+model OrderPromotion {
+  id           String     @id @default(uuid())
+
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  promotionId  String
+  promotion    Promotion  @relation(fields: [promotionId], references: [id])
+
+  discountAmount Decimal  @db.Decimal(10,2)
+  code           String   // snapshot of code used
+
+  @@unique([orderId, promotionId])
+  @@index([orderId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  status    OrderStatus
+  note      String?
+  changedBy String?     // userId (admin) or "system" or "customer"
+
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+}
+
+// ── Payment ───────────────────────────────────────────────────
+
+model Payment {
+  id              String        @id @default(uuid())
+
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  method          String        // "bank_transfer" | "credit_card" | "ewallet" | "cod"
+  provider        String?       // "midtrans" | "xendit" | "stripe"
+  providerRef     String?       // gateway transaction / payment ID
+  providerPayload Json?         // raw gateway webhook payload
+
+  amount          Decimal       @db.Decimal(14,2)
+  currency        String        @default("IDR")
+
+  status          PaymentStatus @default(UNPAID)
+
+  paidAt          DateTime?
+  expiresAt       DateTime?     // for bank-transfer / VA payments
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([providerRef])
+  @@index([status])
+}
+
+// ── Shipment / Fulfillment ────────────────────────────────────
+
+model Shipment {
+  id             String    @id @default(uuid())
+
+  orderId        String    @unique
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  carrier        String
+  serviceCode    String
+  trackingNumber String?
+  trackingUrl    String?
+
+  status         ShipmentStatus @default(PENDING)
+
+  shippedAt      DateTime?
+  estimatedAt    DateTime?
+  deliveredAt    DateTime?
+
+  events         ShipmentEvent[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([trackingNumber])
+}
+
+enum ShipmentStatus {
+  PENDING
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+model ShipmentEvent {
+  id          String    @id @default(uuid())
+
+  shipmentId  String
+  shipment    Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  status      String
+  description String?
+  location    String?
+  occurredAt  DateTime
+
+  createdAt   DateTime  @default(now())
+
+  @@index([shipmentId])
+}
+
+// ── Tax (optional but future-proof) ──────────────────────────
+
+model TaxRate {
+  id         String   @id @default(uuid())
+
+  name       String                        // "PPN 11%"
+  rate       Decimal  @db.Decimal(5,4)    // 0.1100
+  country    String   @default("ID")
+  region     String?                       // province / state for regional tax
+  isDefault  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([country, region])
 }
