@@ -8,5 +8,6 @@ import { OrderController } from './order.controller';
   imports: [PrismaModule],
   providers: [OrderService],
   controllers: [OrderController],
+  exports: [OrderService],
 })
 export class OrderModule {}
