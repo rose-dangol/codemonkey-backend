@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class OrderService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
   async createOrder(
     tx: Prisma.TransactionClient,
     payload: {
@@ -162,5 +162,124 @@ export class OrderService {
         promotions: true,
       },
     });
+  }
+
+  async getAllOrders(filters?: { customerId?: string; status?: any }) {
+    const whereClause: Prisma.OrderWhereInput = {};
+
+    if (filters?.customerId) {
+      whereClause.customerId = filters.customerId;
+    }
+
+    if (filters?.status) {
+      whereClause.status = filters.status;
+    }
+
+    return this.prisma.order.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+        payments: true,
+        shipment: true,
+        statusHistory: true,
+        promotions: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async getAnalytics(filters?: {
+    startDate?: string;
+    endDate?: string;
+    customerId?: string;
+  }) {
+    const whereClause: Prisma.OrderWhereInput = {
+      status: {
+        not: 'CANCELLED',
+      },
+    };
+
+    if (filters?.customerId) {
+      whereClause.customerId = filters.customerId;
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      whereClause.createdAt = {};
+      if (filters.startDate) {
+        whereClause.createdAt.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        whereClause.createdAt.lte = new Date(filters.endDate);
+      }
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+      },
+    });
+
+    const activeFields = await this.prisma.cogsField.findMany({
+      where: {
+        isActive: true,
+      },
+    });
+    const activeKeysLower = activeFields.map((f) => f.key.toLowerCase());
+
+    let totalSales = 0;
+    let totalProfit = 0;
+    const totalOrders = orders.length;
+
+    for (const order of orders) {
+      totalSales += Number(order.grandTotal);
+
+      for (const item of order.items) {
+        const cogsData = (item.cogsSnapshot as Record<string, any>) || {};
+        let totalItemCogs = 0;
+
+        const cogsDataLower: Record<string, any> = {};
+        for (const [key, val] of Object.entries(cogsData)) {
+          if (val !== null && val !== undefined) {
+            cogsDataLower[key.toLowerCase()] = val;
+          }
+        }
+
+        if (activeKeysLower.length > 0) {
+          for (const keyLower of activeKeysLower) {
+            totalItemCogs += Number(cogsDataLower[keyLower] ?? 0);
+          }
+        } else {
+          totalItemCogs = Number(cogsDataLower['cost'] ?? 0);
+        }
+
+        const sellingPrice = Number(item.unitPrice);
+        const itemProfit = (sellingPrice - totalItemCogs) * item.quantity;
+        totalProfit += itemProfit;
+      }
+    }
+
+    const profitMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+
+    const allOrders = await this.prisma.order.findMany();
+
+    const conversionRate = (totalOrders / allOrders.length) * 100;
+
+    const cancelledOrder = await this.prisma.order.count({
+      where: {
+        status: 'CANCELLED',
+      },
+    });
+
+    return {
+      totalSales,
+      totalProfit,
+      totalOrders,
+      cancelledOrder,
+      conversionRate: Number(conversionRate.toFixed(2)),
+      profitMargin: Number(profitMargin.toFixed(2)),
+    };
   }
 }
