@@ -11,10 +11,7 @@ export class AddCategoryDto {
   @IsOptional()
   @IsString()
   categoryParentId: string | null;
-  
-  @IsString()
-  categoryImage: string
 
   @IsString()
-  categoryDesc: string
+  categoryDesc: string;
 }

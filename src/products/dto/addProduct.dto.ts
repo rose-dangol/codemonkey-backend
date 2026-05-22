@@ -8,8 +8,8 @@ export class AddProductDto {
   )
   productName: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   productImage: string;
 
   @IsOptional()
@@ -30,5 +30,4 @@ export class AddProductDto {
   @IsOptional()
   @IsString()
   productBrandId?: string | undefined;
-
 }
