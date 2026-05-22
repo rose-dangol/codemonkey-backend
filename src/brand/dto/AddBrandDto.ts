@@ -1,17 +1,14 @@
-import { IsArray, IsOptional, IsString } from "class-validator";
+import { IsArray, IsOptional, IsString } from 'class-validator';
 
 export class AddBrandDto {
   @IsString()
-    brandName: string;
-    @IsString()
-    @IsOptional()
-    brandImage: string;
-    @IsString()
-  
-    brandDesc: string;
+  brandName: string;
 
-    @IsArray()
-    @IsString({ each: true })
-    @IsOptional()
-    productId: string[]|undefined;
+  @IsString()
+  brandDesc: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  productId: string[] | undefined;
 }

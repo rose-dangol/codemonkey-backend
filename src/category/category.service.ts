@@ -5,13 +5,37 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddCategoryDto } from './dto/addCategory.dto';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Injectable()
 export class CategoryService {
-  constructor(private prisma: PrismaService) {}
-  async addCategory(categoryDetail: AddCategoryDto) {
+  constructor(
+    private prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
+
+  async addCategory(
+    categoryDetail: AddCategoryDto,
+    file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new Error('Category image is required');
+    }
+
+    const uploaded = await this.cloudinary.uploadFile(file);
+
+    if (!('url' in uploaded)) {
+      throw new Error('Failed to upload image.');
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const imageUrl = uploaded.url;
+
     return this.prisma.productCategory.create({
-      data: categoryDetail,
+      data: {
+        ...categoryDetail,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        categoryImage: imageUrl,
+      },
     });
   }
 
@@ -89,6 +113,21 @@ export class CategoryService {
     if (!categoryId || categoryId.length === 0) {
       throw new NotFoundException('No Category Selected');
     }
+
+    const categories = await this.prisma.productCategory.findMany({
+      where: {
+        id: { in: categoryId },
+      },
+      select: {
+        id: true,
+        categoryImage: true,
+      },
+    });
+
+    if (!categories.length) {
+      throw new NotFoundException('Categories not found');
+    }
+
     const categoriesWithProducts = await this.prisma.product.findMany({
       where: {
         categoryId: {
@@ -105,6 +144,20 @@ export class CategoryService {
         'Cannot delete, some categories contain products',
       );
     }
+
+    await Promise.all(
+      categories.map(async (cat) => {
+        if (cat.categoryImage) {
+          const publicId = this.cloudinary.getPublicIdFromUrl(
+            cat.categoryImage,
+          );
+          if (publicId) {
+            await this.cloudinary.deleteFile(publicId);
+          }
+        }
+      }),
+    );
+
     return await this.prisma.productCategory.deleteMany({
       where: {
         id: {
@@ -131,7 +184,66 @@ export class CategoryService {
     return false;
   }
 
-  async updateCategory(categoryDetail: AddCategoryDto, categoryId: string) {
+  async updateCategory(
+    categoryDetail: AddCategoryDto,
+    categoryId: string,
+    file?: Express.Multer.File,
+  ) {
+    const existingCategory = await this.prisma.productCategory.findUnique({
+      where: { id: categoryId },
+    });
+
+    if (!existingCategory) {
+      throw new NotFoundException(`Category with ID ${categoryId} not found`);
+    }
+
+    let imageUrl = existingCategory.categoryImage;
+
+    if (file) {
+      const uploaded = await this.cloudinary.uploadFile(file);
+      if (uploaded && 'url' in uploaded) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        imageUrl = uploaded.url;
+
+        // delete old image from Cloudinary if it exists
+        if (existingCategory.categoryImage) {
+          const publicId = this.cloudinary.getPublicIdFromUrl(
+            existingCategory.categoryImage,
+          );
+          if (publicId) {
+            try {
+              await this.cloudinary.deleteFile(publicId);
+            } catch (error) {
+              console.error(
+                `Failed to delete old image ${publicId} from Cloudinary:`,
+                error,
+              );
+            }
+          }
+        }
+      } else {
+        throw new Error('Failed to upload image.');
+      }
+    } else if (existingCategory.categoryImage !== undefined) {
+      const oldImageUrl = existingCategory.categoryImage;
+      imageUrl = existingCategory.categoryImage;
+
+      // If the old image URL has changed/cleared, delete it from Cloudinary
+      if (oldImageUrl && oldImageUrl !== imageUrl) {
+        const publicId = this.cloudinary.getPublicIdFromUrl(oldImageUrl);
+        if (publicId) {
+          try {
+            await this.cloudinary.deleteFile(publicId);
+          } catch (error) {
+            console.error(
+              `Failed to delete old image ${publicId} from Cloudinary:`,
+              error,
+            );
+          }
+        }
+      }
+    }
+
     if (categoryDetail.categoryParentId === categoryId) {
       throw new BadRequestException('Category cannot be its own parent');
     }
@@ -149,7 +261,7 @@ export class CategoryService {
       },
       data: {
         categoryName: categoryDetail.categoryName,
-        categoryImage: categoryDetail.categoryImage,
+        categoryImage: imageUrl,
         categoryDesc: categoryDetail.categoryDesc,
         categoryParentId: categoryDetail.categoryParentId,
       },
