@@ -282,4 +282,389 @@ export class OrderService {
       profitMargin: Number(profitMargin.toFixed(2)),
     };
   }
+
+  // async getRevenueChartData(filters?: {
+  //   startDate?: string;
+  //   endDate?: string;
+  //   customerId?: string;
+  //   groupBy?: 'day' | 'month' | 'year';
+  // }) {
+  //   const whereClause: Prisma.OrderWhereInput = {
+  //     status: { not: 'CANCELLED' },
+  //   };
+
+  //   if (filters?.customerId) {
+  //     whereClause.customerId = filters.customerId;
+  //   }
+
+  //   if (filters?.startDate || filters?.endDate) {
+  //     whereClause.createdAt = {};
+
+  //     if (filters.startDate) {
+  //       whereClause.createdAt.gte = new Date(filters.startDate);
+  //     }
+
+  //     if (filters.endDate) {
+  //       whereClause.createdAt.lte = new Date(filters.endDate);
+  //     }
+  //   }
+
+  //   const orders = await this.prisma.order.findMany({
+  //     where: whereClause,
+  //     include: { items: true },
+  //     orderBy: { createdAt: 'asc' },
+  //   });
+
+  //   const activeFields = await this.prisma.cogsField.findMany({
+  //     where: { isActive: true },
+  //   });
+
+  //   const activeKeysLower = activeFields.map((f) => f.key.toLowerCase());
+
+  //   const start = filters?.startDate
+  //     ? new Date(filters.startDate)
+  //     : new Date(new Date().getFullYear(), 0, 1);
+
+  //   const end = filters?.endDate ? new Date(filters.endDate) : new Date();
+
+  //   const groupBy = filters?.groupBy ?? 'month';
+
+  //   const pad = (n: number) => String(n).padStart(2, '0');
+
+  //   const formatKey = (date: Date) => {
+  //     const y = date.getUTCFullYear();
+  //     const m = pad(date.getUTCMonth() + 1);
+  //     const d = pad(date.getUTCDate());
+
+  //     if (groupBy === 'day') return `${y}-${m}-${d}`;
+  //     if (groupBy === 'year') return `${y}`;
+  //     return `${y}-${m}`;
+  //   };
+
+  //   const dataMap: Record<string, { revenue: number; profit: number }> = {};
+
+  //   const cursor = new Date(start);
+  //   const endCursor = new Date(end);
+
+  //   while (cursor <= endCursor) {
+  //     const key = formatKey(cursor);
+  //     dataMap[key] = { revenue: 0, profit: 0 };
+
+  //     if (groupBy === 'day') cursor.setUTCDate(cursor.getUTCDate() + 1);
+  //     else if (groupBy === 'year')
+  //       cursor.setUTCFullYear(cursor.getUTCFullYear() + 1);
+  //     else cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  //   }
+
+  //   for (const order of orders) {
+  //     const key = formatKey(order.createdAt);
+
+  //     if (!dataMap[key]) {
+  //       dataMap[key] = { revenue: 0, profit: 0 };
+  //     }
+
+  //     dataMap[key].revenue += Number(order.grandTotal);
+
+  //     for (const item of order.items) {
+  //       const cogsData = (item.cogsSnapshot as Record<string, any>) || {};
+
+  //       const normalized: Record<string, number> = {};
+  //       for (const [k, v] of Object.entries(cogsData)) {
+  //         if (v != null) normalized[k.toLowerCase()] = Number(v);
+  //       }
+
+  //       let totalCogs = 0;
+
+  //       if (activeKeysLower.length > 0) {
+  //         for (const k of activeKeysLower) {
+  //           totalCogs += normalized[k] ?? 0;
+  //         }
+  //       } else {
+  //         totalCogs = normalized['cost'] ?? 0;
+  //       }
+
+  //       const profit = (Number(item.unitPrice) - totalCogs) * item.quantity;
+
+  //       dataMap[key].profit += profit;
+  //     }
+  //   }
+
+  //   return Object.entries(dataMap).map(([date, value]) => ({
+  //     date,
+  //     revenue: Number(value.revenue.toFixed(2)),
+  //     profit: Number(value.profit.toFixed(2)),
+  //   }));
+  // }
+
+  async getRevenueChartData(filters?: {
+    startDate?: string;
+    endDate?: string;
+    customerId?: string;
+    groupBy?: 'day' | 'month' | 'year';
+  }) {
+    const whereClause: Prisma.OrderWhereInput = {
+      status: { not: 'CANCELLED' },
+    };
+
+    if (filters?.customerId) {
+      whereClause.customerId = filters.customerId;
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      whereClause.createdAt = {};
+
+      if (filters.startDate) {
+        whereClause.createdAt.gte = new Date(filters.startDate);
+      }
+
+      if (filters.endDate) {
+        whereClause.createdAt.lte = new Date(filters.endDate);
+      }
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: whereClause,
+      include: { items: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const activeFields = await this.prisma.cogsField.findMany({
+      where: { isActive: true },
+    });
+
+    const activeKeysLower = activeFields.map((f) => f.key.toLowerCase());
+
+    const start = filters?.startDate
+      ? new Date(filters.startDate)
+      : new Date(new Date().getFullYear(), 0, 1);
+
+    const end = filters?.endDate ? new Date(filters.endDate) : new Date();
+
+    const groupBy = filters?.groupBy ?? 'month';
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    const formatKey = (date: Date) => {
+      const y = date.getUTCFullYear();
+      const m = pad(date.getUTCMonth() + 1);
+      const d = pad(date.getUTCDate());
+
+      if (groupBy === 'day') return `${y}-${m}-${d}`;
+      if (groupBy === 'year') return `${y}`;
+      return `${y}-${m}`;
+    };
+
+    const dataMap: Record<string, { revenue: number; profit: number }> = {};
+
+    const cursor = new Date(start);
+    const endCursor = new Date(end);
+
+    while (cursor <= endCursor) {
+      const key = formatKey(cursor);
+      dataMap[key] = { revenue: 0, profit: 0 };
+
+      if (groupBy === 'day') cursor.setUTCDate(cursor.getUTCDate() + 1);
+      else if (groupBy === 'year')
+        cursor.setUTCFullYear(cursor.getUTCFullYear() + 1);
+      else cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+
+    for (const order of orders) {
+      const key = formatKey(order.createdAt);
+
+      if (!dataMap[key]) {
+        dataMap[key] = { revenue: 0, profit: 0 };
+      }
+
+      dataMap[key].revenue += Number(order.grandTotal);
+
+      for (const item of order.items) {
+        const cogsData = (item.cogsSnapshot as Record<string, any>) || {};
+
+        const normalized: Record<string, number> = {};
+        for (const [k, v] of Object.entries(cogsData)) {
+          if (v != null) normalized[k.toLowerCase()] = Number(v);
+        }
+
+        let totalCogs = 0;
+
+        if (activeKeysLower.length > 0) {
+          for (const k of activeKeysLower) {
+            totalCogs += normalized[k] ?? 0;
+          }
+        } else {
+          totalCogs = normalized['cost'] ?? 0;
+        }
+
+        const profit = (Number(item.unitPrice) - totalCogs) * item.quantity;
+
+        dataMap[key].profit += profit;
+      }
+    }
+
+    return Object.entries(dataMap).map(([date, value]) => {
+      let label: string;
+
+      switch (groupBy) {
+        case 'day':
+          const [y, m, d] = date.split('-').map(Number);
+          label = new Date(y, m - 1, d).toLocaleDateString('en-US', {
+            weekday: 'long',
+          });
+          break;
+        case 'month':
+          label = new Date(date + '-01').toLocaleDateString('en-US', {
+            month: 'short',
+          });
+          break;
+        case 'year':
+          label = date;
+          break;
+        default:
+          label = date;
+      }
+
+      return {
+        [groupBy]: label,
+        revenue: Number(value.revenue.toFixed(2)),
+        profit: Number(value.profit.toFixed(2)),
+      };
+    });
+  }
+
+  async getOrderChartData(filters?: {
+    startDate?: string;
+    endDate?: string;
+    customerId?: string;
+    groupBy?: 'day' | 'month' | 'year';
+  }) {
+    const whereClause: Prisma.OrderWhereInput = {
+      status: {
+        not: 'CANCELLED',
+      },
+    };
+
+    if (filters?.customerId) {
+      whereClause.customerId = filters.customerId;
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      whereClause.createdAt = {};
+
+      if (filters.startDate) {
+        whereClause.createdAt.gte = new Date(filters.startDate);
+      }
+
+      if (filters.endDate) {
+        whereClause.createdAt.lte = new Date(filters.endDate);
+      }
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    const start = filters?.startDate
+      ? new Date(filters.startDate)
+      : new Date(new Date().getFullYear(), 0, 1);
+
+    const end = filters?.endDate ? new Date(filters.endDate) : new Date();
+
+    const groupBy = filters?.groupBy ?? 'month';
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    const formatKey = (date: Date) => {
+      const y = date.getUTCFullYear();
+      const m = pad(date.getUTCMonth() + 1);
+      const d = pad(date.getUTCDate());
+
+      if (groupBy === 'day') return `${y}-${m}-${d}`;
+      if (groupBy === 'year') return `${y}`;
+
+      return `${y}-${m}`;
+    };
+
+    const dataMap: Record<string, { orders: number; cancelled: number }> = {};
+
+    const cursor = new Date(start);
+    const endCursor = new Date(end);
+
+    // Fill empty periods
+    while (cursor <= endCursor) {
+      const key = formatKey(cursor);
+
+      dataMap[key] = {
+        orders: 0,
+        cancelled: 0,
+      };
+
+      if (groupBy === 'day') {
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      } else if (groupBy === 'year') {
+        cursor.setUTCFullYear(cursor.getUTCFullYear() + 1);
+      } else {
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+    }
+
+    // Populate data
+    for (const order of orders) {
+      const key = formatKey(order.createdAt);
+
+      if (!dataMap[key]) {
+        dataMap[key] = {
+          orders: 0,
+          cancelled: 0,
+        };
+      }
+
+      dataMap[key].orders += 1;
+
+      if (order.status === 'CANCELLED') {
+        dataMap[key].cancelled += 1;
+      }
+    }
+
+    return Object.entries(dataMap).map(([date, data]) => {
+      let label: string;
+
+      switch (groupBy) {
+        case 'day': {
+          const [y, m, d] = date.split('-').map(Number);
+
+          label = new Date(y, m - 1, d).toLocaleDateString('en-US', {
+            weekday: 'long',
+          });
+
+          break;
+        }
+
+        case 'month':
+          label = new Date(date + '-01').toLocaleDateString('en-US', {
+            month: 'short',
+          });
+          break;
+
+        case 'year':
+          label = date;
+          break;
+
+        default:
+          label = date;
+      }
+
+      return {
+        [groupBy]: label,
+        orders: data.orders,
+        cancelled: data.cancelled,
+      };
+    });
+  }
 }

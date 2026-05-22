@@ -26,6 +26,36 @@ export class OrderController {
     return this.orderService.getAnalytics({ startDate, endDate, customerId });
   }
 
+  @Get('/revenue-chart')
+  async getRevenueChartData(
+    @Query('groupBy') groupBy: 'day' | 'month' | 'year',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('customerId') customerId?: string,
+  ) {
+    return this.orderService.getRevenueChartData({
+      startDate,
+      endDate,
+      customerId,
+      groupBy,
+    });
+  }
+
+  @Get('/order-chart')
+  async getOrderChartData(
+    @Query('groupBy') groupBy: 'day' | 'month' | 'year',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('customerId') customerId?: string,
+  ) {
+    return this.orderService.getOrderChartData({
+      startDate,
+      endDate,
+      customerId,
+      groupBy,
+    });
+  }
+
   @Get('/:id')
   async getOrder(@Param('id') id: string) {
     return this.orderService.getOrder(id);
@@ -44,4 +74,3 @@ export class OrderController {
     return this.orderService.cancelOrder(this.prisma, id, body.reason);
   }
 }
-
