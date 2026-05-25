@@ -17,17 +17,63 @@ export class OrderService {
         taxTotal: number;
         grandTotal: number;
       };
+      shippingAddressId?: string;
+      shippingAddress?: {
+        label?: string;
+        recipientName: string;
+        phone: string;
+        line1: string;
+        line2?: string;
+        city: string;
+        state: string;
+        postalCode: string;
+        country?: string;
+      };
     },
   ) {
-    const { customerId, cart, pricing } = payload;
+    const { customerId, cart, pricing, shippingAddressId, shippingAddress } =
+      payload;
 
     const orderNumber = this.generateOrderNumber();
+    let finalShippingAddressId: string | undefined = undefined;
+    let shippingSnapshot: any = null;
+    if (shippingAddressId) {
+      const address = await tx.customerAddress.findFirst({
+        where: { id: shippingAddressId, customerId },
+      });
+      if (address) {
+        finalShippingAddressId = address.id;
+        shippingSnapshot = address;
+      }
+    } else if (shippingAddress) {
+      // Automatically save new address for the customer
+      const createdAddress = await tx.customerAddress.create({
+        data: {
+          customerId,
+          label: shippingAddress.label || 'Shipping Address',
+          recipientName: shippingAddress.recipientName,
+          phone: shippingAddress.phone,
+          line1: shippingAddress.line1,
+          line2: shippingAddress.line2,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postalCode: shippingAddress.postalCode,
+          country: shippingAddress.country || 'ID',
+          isDefault: false,
+        },
+      });
+      finalShippingAddressId = createdAddress.id;
+      shippingSnapshot = createdAddress;
+    }
 
     const order = await tx.order.create({
       data: {
         orderNumber,
 
         customerId,
+
+        shippingAddressId: finalShippingAddressId,
+        shippingSnapshot,
 
         subtotal: pricing.subtotal,
         shippingFee: pricing.shippingFee,
@@ -81,6 +127,7 @@ export class OrderService {
 
       include: {
         items: true,
+        shippingAddress: true,
         statusHistory: true,
       },
     });
@@ -104,19 +151,71 @@ export class OrderService {
 
   async confirmOrder(tx: Prisma.TransactionClient, orderId: string) {
     return tx.order.update({
-      where: {
-        id: orderId,
-      },
-
+      where: { id: orderId },
       data: {
         status: 'CONFIRMED',
         paymentStatus: 'PAID',
-
         statusHistory: {
           create: {
             status: 'CONFIRMED',
             changedBy: 'system',
             note: 'Payment successful',
+          },
+        },
+      },
+    });
+  }
+
+  async processOrder(tx: Prisma.TransactionClient, orderId: string) {
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'PROCESSING',
+        statusHistory: {
+          create: {
+            status: 'PROCESSING',
+            changedBy: 'system',
+            note: 'Order is being processed',
+          },
+        },
+      },
+    });
+  }
+
+  async shipOrder(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    note?: string,
+  ) {
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'SHIPPED',
+        statusHistory: {
+          create: {
+            status: 'SHIPPED',
+            changedBy: 'system',
+            note: note ?? 'Order has been shipped',
+          },
+        },
+      },
+    });
+  }
+
+  async deliverOrder(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    note?: string,
+  ) {
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'DELIVERED',
+        statusHistory: {
+          create: {
+            status: 'DELIVERED',
+            changedBy: 'system',
+            note: note ?? 'Order delivered successfully',
           },
         },
       },
@@ -129,19 +228,98 @@ export class OrderService {
     reason?: string,
   ) {
     return tx.order.update({
-      where: {
-        id: orderId,
-      },
-
+      where: { id: orderId },
       data: {
         status: 'CANCELLED',
         cancelReason: reason,
-
         statusHistory: {
           create: {
             status: 'CANCELLED',
             changedBy: 'system',
             note: reason ?? 'Order cancelled',
+          },
+        },
+      },
+    });
+  }
+
+  async refundOrder(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    reason?: string,
+  ) {
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'REFUNDED',
+        paymentStatus: 'REFUNDED',
+        statusHistory: {
+          create: {
+            status: 'REFUNDED',
+            changedBy: 'system',
+            note: reason ?? 'Order refunded',
+          },
+        },
+      },
+    });
+  }
+
+  // ─── Payment status methods ───────────────────────────────────────────────────
+
+  async markPaymentAwaitingVerification(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    note?: string,
+  ) {
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'AWAITING_VERIFICATION',
+        statusHistory: {
+          create: {
+            status: 'PENDING', // order status unchanged
+            changedBy: 'system',
+            note: note ?? 'Payment submitted, awaiting verification',
+          },
+        },
+      },
+    });
+  }
+
+  async markPaymentFailed(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    reason?: string,
+  ) {
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'FAILED',
+        statusHistory: {
+          create: {
+            status: 'PENDING', // order status unchanged — can be retried
+            changedBy: 'system',
+            note: reason ?? 'Payment failed',
+          },
+        },
+      },
+    });
+  }
+
+  async markPartiallyRefunded(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    note?: string,
+  ) {
+    return tx.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'PARTIALLY_REFUNDED',
+        statusHistory: {
+          create: {
+            status: 'DELIVERED', // order was delivered; only payment status changes
+            changedBy: 'system',
+            note: note ?? 'Partial refund issued',
           },
         },
       },
@@ -665,6 +843,16 @@ export class OrderService {
         orders: data.orders,
         cancelled: data.cancelled,
       };
+    });
+  }
+
+  async deleteOrder(orderIds: string[]) {
+    return this.prisma.order.deleteMany({
+      where: {
+        id: {
+          in: orderIds,
+        },
+      },
     });
   }
 }

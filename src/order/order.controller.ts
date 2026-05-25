@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -61,9 +69,26 @@ export class OrderController {
     return this.orderService.getOrder(id);
   }
 
+  // ─── Order Status Endpoints ────────────────────────────────────────────────
+
   @Post('/:id/confirm')
   async confirmOrder(@Param('id') id: string) {
     return this.orderService.confirmOrder(this.prisma, id);
+  }
+
+  @Post('/:id/process')
+  async processOrder(@Param('id') id: string) {
+    return this.orderService.processOrder(this.prisma, id);
+  }
+
+  @Post('/:id/ship')
+  async shipOrder(@Param('id') id: string, @Body() body: { note?: string }) {
+    return this.orderService.shipOrder(this.prisma, id, body.note);
+  }
+
+  @Post('/:id/deliver')
+  async deliverOrder(@Param('id') id: string, @Body() body: { note?: string }) {
+    return this.orderService.deliverOrder(this.prisma, id, body.note);
   }
 
   @Post('/:id/cancel')
@@ -72,5 +97,50 @@ export class OrderController {
     @Body() body: { reason?: string },
   ) {
     return this.orderService.cancelOrder(this.prisma, id, body.reason);
+  }
+
+  @Post('/:id/refund')
+  async refundOrder(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.orderService.refundOrder(this.prisma, id, body.reason);
+  }
+
+  // ─── Payment Status Endpoints ──────────────────────────────────────────────
+
+  @Post('/:id/payment/awaiting-verification')
+  async markPaymentAwaitingVerification(
+    @Param('id') id: string,
+    @Body() body: { note?: string },
+  ) {
+    return this.orderService.markPaymentAwaitingVerification(
+      this.prisma,
+      id,
+      body.note,
+    );
+  }
+
+  @Post('/:id/payment/failed')
+  async markPaymentFailed(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.orderService.markPaymentFailed(this.prisma, id, body.reason);
+  }
+
+  @Post('/:id/payment/partially-refunded')
+  async markPartiallyRefunded(
+    @Param('id') id: string,
+    @Body() body: { note?: string },
+  ) {
+    return this.orderService.markPartiallyRefunded(this.prisma, id, body.note);
+  }
+
+  // ─── Delete ───────────────────────────────────────────────────────────────
+
+  @Delete('/deleteOrder')
+  async deleteOrder(@Body('orderIds') orderIds: string[]) {
+    return this.orderService.deleteOrder(orderIds);
   }
 }
