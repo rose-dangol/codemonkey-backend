@@ -56,4 +56,98 @@ export class CustomerService {
   async deleteCustomer(id: string) {
     return this.prisma.customer.delete({ where: { id } });
   }
+
+  async getUserGrowth() {
+    const customers = await this.prisma.customer.findMany({
+      select: {
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    // If no customers
+    if (customers.length === 0) {
+      return [];
+    }
+
+    const monthlyMap = new Map<
+      string,
+      {
+        month: string;
+        newUsers: number;
+        users: number;
+      }
+    >();
+
+    // Count new users per month
+    customers.forEach((customer) => {
+      const date = new Date(customer.createdAt);
+
+      // Unique key
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+
+      // Display label
+      const label = date.toLocaleString('default', {
+        month: 'short',
+        year: 'numeric',
+      });
+
+      if (!monthlyMap.has(key)) {
+        monthlyMap.set(key, {
+          month: label,
+          newUsers: 0,
+          users: 0,
+        });
+      }
+
+      monthlyMap.get(key)!.newUsers += 1;
+    });
+
+    // Generate ALL months from first customer till now
+    const firstDate = new Date(customers[0].createdAt);
+
+    const currentDate = new Date();
+
+    const result: {
+      month: string;
+      newUsers: number;
+      users: number;
+    }[] = [];
+
+    let runningTotal = 0;
+
+    const iteratorDate = new Date(
+      firstDate.getFullYear(),
+      firstDate.getMonth(),
+      1,
+    );
+
+    while (iteratorDate <= currentDate) {
+      const key = `${iteratorDate.getFullYear()}-${iteratorDate.getMonth()}`;
+
+      const label = iteratorDate.toLocaleString('default', {
+        month: 'short',
+        year: 'numeric',
+      });
+
+      const existing = monthlyMap.get(key);
+
+      const newUsers = existing?.newUsers ?? 0;
+
+      runningTotal += newUsers;
+
+      result.push({
+        month: label,
+        newUsers,
+        users: runningTotal,
+      });
+
+      // Move to next month
+      iteratorDate.setMonth(iteratorDate.getMonth() + 1);
+    }
+
+    return result;
+  }
 }

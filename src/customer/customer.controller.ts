@@ -30,4 +30,9 @@ export class CustomerController {
   //   async deleteCustomer(@Body() body: { ids: string[] }) {
   //     return this.customerService.deleteCustomer(body.ids);
   //   }
+
+  @Get('/user-growth')
+  async getUserGrowth() {
+    return this.customerService.getUserGrowth();
+  }
 }
