@@ -5,7 +5,8 @@
       "Bash(docker build *)",
       "Bash(docker run *)",
       "Bash(docker exec codemonkey-app *)",
-      "Bash(docker rm *)"
+      "Bash(docker rm *)",
+      "Bash(npx prisma *)"
     ]
   }
 }

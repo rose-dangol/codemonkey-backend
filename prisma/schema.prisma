@@ -91,6 +91,43 @@ model Brand {
 //   @@index([serviceName])
 // }
 
+model InventoryTransaction {
+  id              String   @id @default(uuid())
+
+  variantId       String
+  variant         ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  type            InventoryTransactionType
+
+  quantity        Int
+  previousStock   Int
+  newStock        Int
+
+  referenceId     String?   // orderId, purchaseOrderId, etc.
+  referenceType   String?   // "order", "manual_adjustment", "restock"
+
+  note            String?
+
+  createdBy       String?   // admin user id
+
+  createdAt       DateTime @default(now())
+
+  @@index([variantId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum InventoryTransactionType {
+  PURCHASE
+  SALE
+  RETURN
+  ADJUSTMENT
+  DAMAGE
+  RESTOCK
+  RESERVE
+  RELEASE
+}
+
 model ProductVariant {
   id         String @id @default(uuid())
 
@@ -104,6 +141,7 @@ model ProductVariant {
 
   attributes VariantAttribute[]
   cartItems  CartItem[] @relation("CartItemVariant")
+  inventoryTransactions InventoryTransaction[]
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

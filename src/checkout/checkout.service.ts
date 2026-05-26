@@ -22,11 +22,11 @@ export class CheckoutService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const cart = await this.cartService.getCart(customerId);
+
       if (!cart || cart.items.length === 0) {
         throw new Error('Cart is empty');
       }
 
-      this.inventoryService.validateStock(cart);
       const pricing = this.pricingService.calculate(cart);
 
       const order = await this.orderService.createOrder(tx, {
@@ -37,7 +37,16 @@ export class CheckoutService {
         shippingAddress,
       });
 
-      await this.inventoryService.decrementStock(tx, cart);
+      // 🔥 CRITICAL FIX: reserve stock INSIDE transaction
+      for (const item of cart.items) {
+        await this.inventoryService.reserveStock(tx, {
+          variantId: item.variantId,
+          quantity: item.quantity,
+          referenceId: order.id,
+          createdBy: customerId,
+        });
+      }
+
       await this.cartService.clearCart(tx, cart.id);
 
       return order;
