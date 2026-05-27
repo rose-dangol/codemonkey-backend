@@ -35,4 +35,14 @@ export class CustomerController {
   async getUserGrowth() {
     return this.customerService.getUserGrowth();
   }
+
+  @Get('stats/gender')
+  getUsersByGender() {
+    return this.customerService.getUsersByGender();
+  }
+
+  @Get('stats/age-group')
+  getUsersByAgeGroup() {
+    return this.customerService.getUsersByAgeGroup();
+  }
 }
