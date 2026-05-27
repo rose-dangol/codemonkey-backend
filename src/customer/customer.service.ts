@@ -150,4 +150,21 @@ export class CustomerService {
 
     return result;
   }
+  async getUsersByGender() {
+    return this.prisma.customer.groupBy({
+      by: ['gender'],
+      _count: {
+        gender: true,
+      },
+    });
+  }
+
+  async getUsersByAgeGroup() {
+    return this.prisma.customer.groupBy({
+      by: ['ageGroup'],
+      _count: {
+        ageGroup: true,
+      },
+    });
+  }
 }

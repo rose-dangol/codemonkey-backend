@@ -225,6 +225,19 @@ model CogsField {
 // ============================================================
 
 // ── Customer ─────────────────────────────────────────────────
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+enum AgeGroup {
+  AGE_10_15
+  AGE_15_18
+  AGE_19_25
+  AGE_26_35
+  AGE_36_45
+  AGE_46_PLUS
+}
 
 model Customer {
   id            String    @id @default(uuid())
@@ -244,10 +257,15 @@ model Customer {
   cart          Cart?
   refreshTokens CustomerRefreshToken[]
 
+  gender        Gender?
+  ageGroup      AgeGroup?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([email])
+  @@index([ageGroup])
+  @@index([gender])
 }
 
 model CustomerRefreshToken {

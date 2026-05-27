@@ -3,7 +3,9 @@ import {
   IsNotEmpty,
   IsOptional,
   ValidateNested,
+  IsEnum,
 } from 'class-validator';
+import { Gender, AgeGroup } from '@prisma/client';
 import { Type } from 'class-transformer';
 
 class AddressDto {
@@ -53,4 +55,12 @@ export class CustomerDto {
   @Type(() => AddressDto)
   @IsOptional()
   address?: AddressDto;
+
+  @IsEnum(Gender)
+  @IsOptional()
+  gender?: Gender;
+
+  @IsEnum(AgeGroup)
+  @IsOptional()
+  ageGroup?: AgeGroup;
 }
